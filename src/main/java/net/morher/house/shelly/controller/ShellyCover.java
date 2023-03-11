@@ -1,35 +1,34 @@
 package net.morher.house.shelly.controller;
 
 import java.time.Duration;
-import java.util.concurrent.ScheduledExecutorService;
 import lombok.extern.slf4j.Slf4j;
 import net.morher.house.api.entity.cover.CoverEntity;
 import net.morher.house.api.entity.cover.CoverState;
 import net.morher.house.api.entity.cover.CoverStateHandler;
-import net.morher.house.api.mqtt.client.HouseMqttClient;
 import net.morher.house.api.schedule.DelayedTrigger;
 import net.morher.house.api.schedule.HouseScheduler;
+import net.morher.house.shelly.api.ChannelReport;
+import net.morher.house.shelly.api.Cover;
 
 @Slf4j
 public class ShellyCover {
-  private final ScheduledExecutorService scheduler;
+  private final HouseScheduler scheduler = HouseScheduler.get();
   private final Duration motorTimeout = Duration.ofMinutes(1);
   private final double powerMin = 1.0;
+  private final Cover cover;
   private final DelayedTrigger motorTimeoutTrigger;
-  private final ShellyCoverTopics topics;
   private final CoverStateHandler stateHandler;
   private CoverState currentState;
 
-  public ShellyCover(
-      HouseScheduler scheduler, HouseMqttClient mqtt, String nodeName, CoverEntity entity) {
+  public ShellyCover(Cover cover, CoverEntity entity) {
+    this.cover = cover;
 
-    topics = new ShellyCoverTopics(mqtt, nodeName, this::onPowerUpdate);
+    motorTimeoutTrigger = scheduler.delayedTrigger("Motor timeout", this::stopAtEnd);
+
+    cover.subscribeToChannelReport(this::onChannelReport);
 
     stateHandler = new CoverStateHandler(entity, this::onCoverState);
     stateHandler.setDeviceInfo(null);
-
-    this.scheduler = scheduler;
-    motorTimeoutTrigger = scheduler.delayedTrigger("Motor timeout", this::stopAtEnd);
   }
 
   private void stopAtEnd() {
@@ -58,15 +57,15 @@ public class ShellyCover {
   private void updateShellyDevice() {
     switch (currentState) {
       case CLOSING:
-        topics.command(ShellyCoverState.CLOSE);
+        cover.closeCover();
         break;
 
       case OPENING:
-        topics.command(ShellyCoverState.OPEN);
+        cover.openCover();
         break;
 
       default:
-        topics.command(ShellyCoverState.STOP);
+        cover.stopCover();
     }
 
     if (isMoving()) {
@@ -76,20 +75,14 @@ public class ShellyCover {
     }
   }
 
-  public void onPowerUpdate(Double data) {
-    if (data < powerMin && isMoving()) {
-      log.debug("Power use below minimum ({}): {}", powerMin, data);
+  private void onChannelReport(ChannelReport report) {
+    if (report.getPower() != null && report.getPower() < powerMin && isMoving()) {
+      log.debug("Power use below minimum ({}): {}", powerMin, report.getPower());
       scheduler.execute(this::stopAtEnd);
     }
   }
 
   private boolean isMoving() {
     return CoverState.OPENING.equals(currentState) || CoverState.CLOSING.equals(currentState);
-  }
-
-  public static enum ShellyCoverState {
-    OPEN,
-    STOP,
-    CLOSE;
   }
 }

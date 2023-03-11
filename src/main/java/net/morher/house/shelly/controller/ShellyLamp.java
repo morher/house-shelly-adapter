@@ -1,43 +1,34 @@
 package net.morher.house.shelly.controller;
 
+import static net.morher.house.api.entity.light.LightState.PowerState.OFF;
+import static net.morher.house.api.entity.light.LightState.PowerState.ON;
 import java.io.Closeable;
 import net.morher.house.api.entity.light.LightEntity;
 import net.morher.house.api.entity.light.LightOptions;
 import net.morher.house.api.entity.light.LightState;
-import net.morher.house.api.entity.light.LightState.PowerState;
 import net.morher.house.api.entity.light.LightStateHandler;
-import net.morher.house.api.mqtt.client.HouseMqttClient;
-import net.morher.house.api.mqtt.client.Topic;
-import net.morher.house.api.mqtt.payload.BooleanMessage;
-import net.morher.house.api.subscription.Subscription;
+import net.morher.house.api.utils.ResourceManager;
+import net.morher.house.api.utils.ResourceManager.ConstructionBlock;
+import net.morher.house.shelly.api.Relay;
 
 public class ShellyLamp implements Closeable {
-  private final Topic<Boolean> commandTopic;
-  private final Subscription stateSubscription;
   private LightStateHandler handler;
+  private ResourceManager resources = new ResourceManager();
 
-  public ShellyLamp(
-      HouseMqttClient mqtt, String nodeName, int relayIndex, LightEntity lightEntity) {
-    String relayTopic = "shellies/" + nodeName + "/relay/" + relayIndex;
-    commandTopic = mqtt.topic(relayTopic + "/command", BooleanMessage.onOffLowerCase(), false);
-    stateSubscription =
-        mqtt.topic(relayTopic, BooleanMessage.onOffLowerCase())
-            .subscribe(this::onRelayStateChanged);
+  public ShellyLamp(Relay relay, LightEntity lightEntity) {
+    try (ConstructionBlock cb = resources.constructionBlock()) {
+      handler = new LightStateHandler(lightEntity, s -> relay.setState(ON.equals(s.getState())));
+      lightEntity.setOptions(new LightOptions(false, null));
+      relay.subscribeToStateUpdate(
+          s -> handler.updateState(new LightState().withState(s ? ON : OFF)));
 
-    handler = new LightStateHandler(lightEntity, this::onLightState);
-    lightEntity.setOptions(new LightOptions(false, null));
-  }
-
-  public void onLightState(LightState lampState) {
-    commandTopic.publish(PowerState.ON.equals(lampState.getState()));
-  }
-
-  public void onRelayStateChanged(Boolean data) {
-    handler.updateState(new LightState(data ? PowerState.ON : PowerState.OFF, null, null));
+      cb.complete();
+    }
   }
 
   @Override
   public void close() {
-    stateSubscription.close();
+    resources.closeQuietly();
+    handler.disconnect();
   }
 }
