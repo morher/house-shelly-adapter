@@ -4,7 +4,6 @@ import static net.morher.house.api.config.DeviceName.combine;
 import net.morher.house.api.config.DeviceName;
 import net.morher.house.api.devicetypes.CoverDevice;
 import net.morher.house.api.devicetypes.GeneralDevice;
-import net.morher.house.api.devicetypes.LampDevice;
 import net.morher.house.api.entity.Device;
 import net.morher.house.api.entity.DeviceId;
 import net.morher.house.api.entity.DeviceInfo;
@@ -18,7 +17,6 @@ import net.morher.house.shelly.api.Cover;
 import net.morher.house.shelly.api.Relay;
 import net.morher.house.shelly.api.ShellyNode;
 import net.morher.house.shelly.config.ShellyConfig;
-import net.morher.house.shelly.config.ShellyConfig.ExposeType;
 import net.morher.house.shelly.config.ShellyConfig.ShellyCoverConfig;
 import net.morher.house.shelly.config.ShellyConfig.ShellyNodeConfig;
 import net.morher.house.shelly.config.ShellyConfig.ShellyRelayConfig;
@@ -52,37 +50,19 @@ public class ShellyController {
       return;
     }
     DeviceId deviceId = combine(relayConfig.getDevice(), nodeName).toDeviceId();
+    ShellyDevice device = createDevice(deviceId);
+
     Relay relay = node.getRelay(relayIndex);
 
     switch (relayConfig.getAs()) {
       case LAMP:
-        configureLamp(relay, deviceId);
+        device.addLamp(relay);
         break;
 
       case SWITCH:
-        configureSwitch(relay, deviceId);
+        device.addSwitch(relay);
         break;
     }
-  }
-
-  private void configureLamp(Relay relay, DeviceId deviceId) {
-    DeviceInfo deviceInfo = new DeviceInfo();
-    deviceInfo.setManufacturer("Shelly");
-
-    Device device = deviceManager.device(deviceId);
-    device.setDeviceInfo(deviceInfo);
-
-    resources.add(new ShellyLamp(relay, device.entity(LampDevice.LIGHT)));
-  }
-
-  private void configureSwitch(Relay relay, DeviceId deviceId) {
-    DeviceInfo deviceInfo = new DeviceInfo();
-    deviceInfo.setManufacturer("Shelly");
-
-    Device device = deviceManager.device(deviceId);
-    device.setDeviceInfo(deviceInfo);
-
-    resources.add(new ShellySwitch(relay, device.entity(GeneralDevice.POWER)));
   }
 
   private void configureCover(
@@ -113,5 +93,14 @@ public class ShellyController {
           new ShellyCoverSwitch(
               coverEntity, device.entity(GeneralDevice.ENABLE, new SwitchOptions())));
     }
+  }
+
+  public ShellyDevice createDevice(DeviceId deviceId) {
+    DeviceInfo deviceInfo = new DeviceInfo();
+    deviceInfo.setManufacturer("Shelly");
+
+    Device device = deviceManager.device(deviceId);
+    device.setDeviceInfo(deviceInfo);
+    return new ShellyDevice(device);
   }
 }
