@@ -14,20 +14,25 @@ shelly:
   nodes:
     livingroom-lightswitch:
       relay0:
-        lamp:
-          device:
-            room: Living room
-            name: Ceiling lamp
+        device:
+          room: Living room
+          name: Ceiling lamp
+        as: Lamp
       relay1:
-        lamp:
-          device:
-            room: Living room
-            name: Wall lamp
+        device:
+          room: Living room
+          name: Wall lamp
+        as: Lamp
 
     hall-lightswitch:
       relay0:
-        switch:
-          device:
-            room: Hall
-            name: Ceiling lamp
+        device:
+          room: Hall
+          name: Ceiling lamp
+        as: Lamp
+      relay1:
+        device:
+          room: Hall
+          name: Ceiling fan
+        as: Switch
 ```

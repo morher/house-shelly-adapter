@@ -51,23 +51,17 @@ public class ShellyController {
     if (relayConfig == null) {
       return;
     }
+    DeviceId deviceId = combine(relayConfig.getDevice(), nodeName).toDeviceId();
     Relay relay = node.getRelay(relayIndex);
 
-    // Backwards compability
-    if (relayConfig.getLamp() != null) {
-      configureLamp(relay, relayConfig.getLamp().getDevice().toDeviceId());
-    }
-    if (relayConfig.getSwitchConfig() != null) {
-      configureSwitch(relay, relayConfig.getSwitchConfig().getDevice().toDeviceId());
-    }
+    switch (relayConfig.getAs()) {
+      case LAMP:
+        configureLamp(relay, deviceId);
+        break;
 
-    if (relayConfig.getLamp() == null && relayConfig.getLamp() == null) {
-      if (relayConfig.getAs().equals(ExposeType.LAMP)) {
-        configureLamp(relay, combine(relayConfig.getDevice(), nodeName).toDeviceId());
-      }
-      if (relayConfig.getAs().equals(ExposeType.SWITCH)) {
-        configureSwitch(relay, combine(relayConfig.getDevice(), nodeName).toDeviceId());
-      }
+      case SWITCH:
+        configureSwitch(relay, deviceId);
+        break;
     }
   }
 

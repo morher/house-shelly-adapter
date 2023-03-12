@@ -2,7 +2,6 @@ package net.morher.house.shelly.config;
 
 import static net.morher.house.shelly.config.ShellyConfig.ExposeType.SWITCH;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.Data;
@@ -27,12 +26,6 @@ public class ShellyConfig {
     private DeviceName device;
     private ExposeType as = SWITCH;
     private Map<String, ThresholdSensorConfig> thresholds = new HashMap<>();
-
-    @Deprecated private ShellyLampConfig lamp;
-
-    @Deprecated
-    @JsonProperty("switch")
-    private ShellySwitchConfig switchConfig;
   }
 
   @Data
