@@ -40,9 +40,17 @@ public class ShellyConfig {
 
   @Data
   public static class ThresholdSensorConfig {
+    private String type;
     private ThresholdConfig power;
     private ThresholdConfig current;
+    private ThresholdConfig voltage;
     private ThresholdConfig temperature;
+
+    public BinarySensorType binarySensorType() {
+      return type != null
+          ? BinarySensorType.valueOf(type.toUpperCase().replace(" ", "_"))
+          : BinarySensorType.POWER;
+    }
   }
 
   @Data
@@ -65,6 +73,7 @@ public class ShellyConfig {
   public static class ShellyCoverConfig {
     private DeviceName device;
     private boolean closedAsSwitch;
+    private Map<String, ThresholdSensorConfig> thresholds = new HashMap<>();
   }
 
   public static enum ExposeType {

@@ -63,11 +63,11 @@ public class ShellyController {
 
     switch (relayConfig.getAs()) {
       case LAMP:
-        device.addLamp(relay);
+        device.addLamp(relay, relayConfig);
         break;
 
       case SWITCH:
-        device.addSwitch(relay);
+        device.addSwitch(relay, relayConfig);
         break;
     }
   }
