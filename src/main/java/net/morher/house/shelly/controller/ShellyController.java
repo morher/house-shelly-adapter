@@ -2,29 +2,24 @@ package net.morher.house.shelly.controller;
 
 import static net.morher.house.api.config.DeviceName.combine;
 import net.morher.house.api.config.DeviceName;
-import net.morher.house.api.devicetypes.CoverDevice;
-import net.morher.house.api.devicetypes.GeneralDevice;
 import net.morher.house.api.entity.Device;
 import net.morher.house.api.entity.DeviceId;
 import net.morher.house.api.entity.DeviceInfo;
 import net.morher.house.api.entity.DeviceManager;
-import net.morher.house.api.entity.cover.CoverEntity;
-import net.morher.house.api.entity.cover.CoverOptions;
-import net.morher.house.api.entity.switches.SwitchOptions;
 import net.morher.house.api.mqtt.client.HouseMqttClient;
-import net.morher.house.api.utils.ResourceManager;
 import net.morher.house.shelly.api.Cover;
 import net.morher.house.shelly.api.Relay;
+import net.morher.house.shelly.api.Sensor;
 import net.morher.house.shelly.api.ShellyNode;
 import net.morher.house.shelly.config.ShellyConfig;
 import net.morher.house.shelly.config.ShellyConfig.ShellyCoverConfig;
 import net.morher.house.shelly.config.ShellyConfig.ShellyNodeConfig;
 import net.morher.house.shelly.config.ShellyConfig.ShellyRelayConfig;
+import net.morher.house.shelly.config.ShellyConfig.ShellySensorConfig;
 
 public class ShellyController {
   private final HouseMqttClient client;
   private final DeviceManager deviceManager;
-  private final ResourceManager resources = new ResourceManager();
 
   public ShellyController(HouseMqttClient client, DeviceManager deviceManager) {
     this.client = client;
@@ -42,6 +37,18 @@ public class ShellyController {
     configureRelay(node, 0, deviceName, config.getRelay0());
     configureRelay(node, 1, deviceName, config.getRelay1());
     configureCover(node, 0, deviceName, config.getCover());
+    configureSensor(node, deviceName, config.getSensor());
+  }
+
+  private void configureSensor(
+      ShellyNode node, DeviceName nodeName, ShellySensorConfig sensorConfig) {
+    if (sensorConfig == null) {
+      return;
+    }
+    DeviceId deviceId = combine(sensorConfig.getDevice(), nodeName).toDeviceId();
+    ShellyDevice device = createDevice(deviceId);
+    Sensor sensor = node.getSensor();
+    device.addSensor(sensor, sensorConfig);
   }
 
   private void configureRelay(
@@ -72,27 +79,9 @@ public class ShellyController {
     }
     Cover cover = node.getCover(coverIndex);
 
-    configureCover(
-        cover,
-        coverConfig.isClosedAsSwitch(),
-        combine(coverConfig.getDevice(), nodeName).toDeviceId());
-  }
-
-  private void configureCover(Cover cover, boolean closedAsSwitch, DeviceId deviceId) {
-    DeviceInfo deviceInfo = new DeviceInfo();
-    deviceInfo.setManufacturer("Shelly");
-
-    Device device = deviceManager.device(deviceId);
-    device.setDeviceInfo(deviceInfo);
-
-    CoverEntity coverEntity = device.entity(CoverDevice.COVER, new CoverOptions());
-    new ShellyCover(cover, coverEntity);
-
-    if (closedAsSwitch) {
-      resources.add(
-          new ShellyCoverSwitch(
-              coverEntity, device.entity(GeneralDevice.ENABLE, new SwitchOptions())));
-    }
+    DeviceId deviceId = combine(coverConfig.getDevice(), nodeName).toDeviceId();
+    ShellyDevice device = createDevice(deviceId);
+    device.addCover(cover, coverConfig);
   }
 
   public ShellyDevice createDevice(DeviceId deviceId) {

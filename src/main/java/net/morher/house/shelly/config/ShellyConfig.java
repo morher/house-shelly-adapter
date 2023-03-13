@@ -5,7 +5,10 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.Data;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import net.morher.house.api.config.DeviceName;
+import net.morher.house.api.entity.sensor.BinarySensorType;
 import net.morher.house.shelly.api.ShellyApiVersion;
 
 @Data
@@ -19,6 +22,13 @@ public class ShellyConfig {
     private ShellyRelayConfig relay0;
     private ShellyRelayConfig relay1;
     private ShellyCoverConfig cover;
+    private ShellySensorConfig sensor;
+  }
+
+  @Data
+  public static class ShellySensorConfig {
+    private DeviceName device;
+    private OpeningType opening;
   }
 
   @Data
@@ -65,5 +75,19 @@ public class ShellyConfig {
     public static ExposeType fromString(String str) {
       return str != null ? ExposeType.valueOf(str.toUpperCase().replace(" ", "_")) : null;
     }
+  }
+
+  @Getter
+  @RequiredArgsConstructor
+  public static enum OpeningType {
+    DOOR(BinarySensorType.DOOR),
+    WINDOW(BinarySensorType.WINDOW);
+
+    @JsonCreator
+    public static OpeningType fromString(String str) {
+      return str != null ? OpeningType.valueOf(str.toUpperCase().replace(" ", "_")) : null;
+    }
+
+    private final BinarySensorType sensorType;
   }
 }

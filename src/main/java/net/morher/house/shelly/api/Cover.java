@@ -1,13 +1,9 @@
 package net.morher.house.shelly.api;
 
-import net.morher.house.api.subscription.Subscription;
-
-public interface Cover {
+public interface Cover extends Channel {
   void openCover();
 
   void closeCover();
 
   void stopCover();
-
-  Subscription subscribeToChannelReport(ChannelReportListener listener);
 }

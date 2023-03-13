@@ -8,6 +8,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import net.morher.house.api.devicetypes.LampDevice;
+import net.morher.house.api.entity.Device;
 import net.morher.house.api.entity.DeviceId;
 import net.morher.house.api.entity.DeviceManager;
 import net.morher.house.api.entity.EntityManager;
@@ -16,6 +17,7 @@ import net.morher.house.api.entity.light.LightEntity;
 import net.morher.house.api.entity.light.LightState;
 import net.morher.house.api.mqtt.client.HouseMqttClient;
 import net.morher.house.shelly.api.TestRelay;
+import net.morher.house.shelly.controller.handler.LampHandler;
 import net.morher.house.test.client.TestHouseMqttClient;
 import org.junit.Test;
 
@@ -29,10 +31,10 @@ public class ShellyLampTest {
 
   @Test
   public void testReactToEntityCommand() {
-    LightEntity lightEntity =
-        deviceManager.device(new DeviceId("Room", "Device")).entity(LampDevice.LIGHT);
+    Device device = deviceManager.device(new DeviceId("Room", "Device"));
+    LightEntity lightEntity = device.entity(LampDevice.LIGHT);
 
-    new ShellyLamp(relay, lightEntity);
+    new LampHandler(device, relay);
 
     lightEntity.sendCommand(new LightState(ON, null, null));
 
@@ -41,12 +43,12 @@ public class ShellyLampTest {
 
   @Test
   public void updateLightStateWhenRelayStateChanges() {
-    LightEntity lightEntity =
-        deviceManager.device(new DeviceId("Room", "Device")).entity(LampDevice.LIGHT);
+    Device device = deviceManager.device(new DeviceId("Room", "Device"));
+    LightEntity lightEntity = device.entity(LampDevice.LIGHT);
 
     List<LightState> stateCollector = stateCollector(lightEntity);
 
-    new ShellyLamp(relay, lightEntity);
+    new LampHandler(device, relay);
 
     relay.getStateUpdateListeners().forEach(l -> l.onRelaysStateUpdate(true));
 

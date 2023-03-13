@@ -1,35 +1,33 @@
 package net.morher.house.shelly.controller;
 
 import java.io.Closeable;
+import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
-import net.morher.house.api.devicetypes.ElectricSensorDevice;
+import net.morher.house.api.devicetypes.CoverDevice;
 import net.morher.house.api.devicetypes.GeneralDevice;
-import net.morher.house.api.devicetypes.LampDevice;
 import net.morher.house.api.entity.Device;
 import net.morher.house.api.entity.DeviceInfo;
-import net.morher.house.api.entity.EntityCategory;
 import net.morher.house.api.entity.EntityDefinition;
-import net.morher.house.api.entity.sensor.SensorEntity;
-import net.morher.house.api.entity.sensor.SensorOptions;
-import net.morher.house.api.entity.sensor.SensorType;
+import net.morher.house.api.entity.common.EntityOptions;
+import net.morher.house.api.entity.common.StatefullEntity;
+import net.morher.house.api.entity.cover.CoverEntity;
+import net.morher.house.api.entity.cover.CoverOptions;
+import net.morher.house.api.entity.switches.SwitchOptions;
 import net.morher.house.api.utils.ResourceManager;
-import net.morher.house.shelly.api.ChannelReport;
+import net.morher.house.shelly.api.Cover;
 import net.morher.house.shelly.api.Relay;
+import net.morher.house.shelly.api.Sensor;
+import net.morher.house.shelly.config.ShellyConfig.ShellyCoverConfig;
+import net.morher.house.shelly.config.ShellyConfig.ShellySensorConfig;
+import net.morher.house.shelly.controller.handler.CoverHandler;
+import net.morher.house.shelly.controller.handler.LampHandler;
+import net.morher.house.shelly.controller.handler.SensorHandler;
+import net.morher.house.shelly.controller.handler.SwitchHandler;
 
 public class ShellyDevice {
   private final ResourceManager resources = new ResourceManager();
   private final Device device;
-  private final LazySensor<Double> currentSensor =
-      new LazySensor<>(ElectricSensorDevice.CURRENT, new SensorOptions(SensorType.CURRENT));
-  private final LazySensor<Double> powerSensor =
-      new LazySensor<>(ElectricSensorDevice.POWER, new SensorOptions(SensorType.POWER));
-  private final LazySensor<Double> voltageSensor =
-      new LazySensor<>(ElectricSensorDevice.VOLTAGE, new SensorOptions(SensorType.VOLTAGE));
-  private final LazySensor<Double> deviceTemperatureSensor =
-      new LazySensor<>(
-          GeneralDevice.DEVICE_TEMPERATURE,
-          new SensorOptions(SensorType.TEMPERATURE_C, EntityCategory.DIAGNOSTIC));
-  private Closeable relayHandler;
+  private Closeable handler;
 
   public ShellyDevice(Device device) {
     this.device = device;
@@ -39,35 +37,43 @@ public class ShellyDevice {
   }
 
   public void addLamp(Relay relay) {
-    if (relayHandler != null) {
+    if (handler != null) {
       throw new IllegalStateException("A relay handler is already registered");
     }
-    relayHandler = new ShellyLamp(relay, device.entity(LampDevice.LIGHT));
-    resources.add(relay.subscribeToChannelReport(this::onChannelReport));
+    handler = new LampHandler(device, relay);
   }
 
   public void addSwitch(Relay relay) {
-    if (relayHandler != null) {
+    if (handler != null) {
       throw new IllegalStateException("A relay handler is already registered");
     }
-    relayHandler = new ShellySwitch(relay, device.entity(GeneralDevice.POWER));
-    resources.add(relay.subscribeToChannelReport(this::onChannelReport));
+    handler = new SwitchHandler(device, relay);
   }
 
-  private void onChannelReport(ChannelReport report) {
-    currentSensor.update(report.getCurrent());
-    powerSensor.update(report.getPower());
-    voltageSensor.update(report.getVoltage());
-    deviceTemperatureSensor.update(report.getTemperature());
+  public void addCover(Cover cover, ShellyCoverConfig config) {
+    CoverEntity coverEntity = device.entity(CoverDevice.COVER, new CoverOptions());
+    handler = new CoverHandler(device, cover);
+
+    if (config.isClosedAsSwitch()) {
+      resources.add(
+          new ShellyCoverSwitch(
+              coverEntity, device.entity(GeneralDevice.ENABLE, new SwitchOptions())));
+    }
+  }
+
+  public void addSensor(Sensor sensor, ShellySensorConfig sensorConfig) {
+    resources.add(new SensorHandler(device, sensor, sensorConfig));
   }
 
   @RequiredArgsConstructor
-  private class LazySensor<S> {
-    private final EntityDefinition<? extends SensorEntity<S>> def;
-    private final SensorOptions options;
-    private SensorEntity<S> entity;
+  private class LazySensor<S, O extends EntityOptions, E extends StatefullEntity<S, O>>
+      implements Consumer<S> {
+    private final EntityDefinition<E> def;
+    private final O options;
+    private E entity;
 
-    public void update(S value) {
+    @Override
+    public void accept(S value) {
       if (value == null) {
         return;
       }

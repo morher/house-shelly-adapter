@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.morher.house.api.mqtt.client.Topic;
 import net.morher.house.shelly.api.Cover;
 import net.morher.house.shelly.api.Relay;
+import net.morher.house.shelly.api.Sensor;
 import net.morher.house.shelly.api.ShellyNode;
 
 @RequiredArgsConstructor
@@ -18,5 +19,10 @@ public class Gen2Node implements ShellyNode {
   @Override
   public Cover getCover(int coverIndex) {
     return new Gen2Cover(nodeTopic, coverIndex);
+  }
+
+  @Override
+  public Sensor getSensor() {
+    throw new IllegalStateException("Sensors not supported in Gen2");
   }
 }
